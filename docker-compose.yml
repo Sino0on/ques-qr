@@ -1,0 +1,26 @@
+version: "3.10"
+
+services:
+  postgres:
+    image: postgres:latest
+    restart: always
+    env_file:
+      - .env
+
+    volumes:
+      - "./postgres:/var/lib/postgresql/data"
+
+  app:
+    build: .
+    volumes:
+      - .:/core
+      - ./media:/app/media
+    ports:
+      - "8010:8000"
+    command: bash -c "python manage.py showmigrations && python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+    restart: always

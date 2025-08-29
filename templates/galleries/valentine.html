@@ -1,0 +1,309 @@
+<!-- templates/galleries/valentine.html -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{{ gallery.title|default:"Valentine Gallery" }}</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Marck+Script&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --rose:#ff2e63; --rose-2:#ff6b93; --dark:#0f0f14; --soft:#fdf2f8; --card:#11111a; --grad1:#2b213a; --grad2:#0c0c12;
+    }
+    html,body{height:100%;}
+    body{
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: radial-gradient(1200px 600px at 50% -10%, rgba(255, 46, 99, .10), transparent),
+                  linear-gradient(180deg, var(--grad1), var(--grad2));
+      color:#f8f7fb;
+      overflow-x:hidden;
+    }
+
+    /* Loader */
+    .loader{
+      position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+      background:radial-gradient(1000px 400px at 50% 0%, rgba(255,46,99,.16), rgba(0,0,0,.6)), #0a0a0f;
+      z-index:60;
+    }
+    .heart{
+      width:84px; height:84px; position:relative; transform:rotate(-45deg);
+      animation:beat 1s ease-in-out infinite;
+      filter: drop-shadow(0 10px 25px rgba(255,46,99,.35));
+    }
+    .heart:before, .heart:after{
+      content:""; position:absolute; width:84px; height:84px; background:linear-gradient(145deg,var(--rose),var(--rose-2));
+      border-radius:50%;
+    }
+    .heart:before{ top:-42px; left:0; }
+    .heart:after{ top:0; left:42px; }
+    @keyframes beat { 0%,100%{transform:rotate(-45deg) scale(1);} 50%{transform:rotate(-45deg) scale(1.12);} }
+
+    /* Floating hearts bg */
+    .hearts-bg{ position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden; }
+    .hearts-bg span{
+      position:absolute; width:14px; height:14px; background:rgba(255,46,99,.55); transform:rotate(45deg);
+      animation: float 9s linear infinite;
+      border-radius: 2px;
+      box-shadow: 0 0 20px rgba(255,46,99,.35);
+    }
+    .hearts-bg span::before, .hearts-bg span::after{
+      content:""; position:absolute; width:14px; height:14px; background:inherit; border-radius:50%;
+    }
+    .hearts-bg span::before{ top:-7px; left:0; }
+    .hearts-bg span::after{ left:-7px; top:0; }
+
+    @keyframes float {
+      0%{ transform: translateY(110vh) rotate(45deg); opacity:0; }
+      10%{opacity:.85;}
+      100%{ transform: translateY(-10vh) rotate(45deg); opacity:0; }
+    }
+
+    /* Glass card */
+    .glass{
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.08);
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+      backdrop-filter: blur(10px);
+    }
+
+    /* Masonry grid (CSS columns) */
+    .masonry{
+      column-count:1;
+      column-gap: 1rem;
+    }
+    @media (min-width: 640px){ .masonry{ column-count:2; } }
+    @media (min-width: 1024px){ .masonry{ column-count:3; } }
+    .masonry-item{
+      break-inside: avoid; margin-bottom: 1rem; border-radius: 16px; overflow:hidden;
+      background: rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08);
+      transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+    }
+    .masonry-item:hover{
+      transform: translateY(-3px);
+      box-shadow: 0 12px 30px rgba(255,46,99,.12);
+      border-color: rgba(255,46,99,.35);
+    }
+    .caption{ padding: 12px 14px; color:#e9e7f4; font-size: 14px; }
+
+    /* Upload dropzone */
+    .dropzone{
+      border:2px dashed rgba(255,255,255,.18); border-radius:16px;
+      transition: border-color .25s ease, background .25s ease;
+    }
+    .dropzone.dragover{
+      border-color: var(--rose);
+      background: rgba(255,46,99,.06);
+    }
+
+    /* CTA button */
+    .btn{
+      background: linear-gradient(90deg, var(--rose), var(--rose-2));
+      color:white; border:none; border-radius: 999px; padding: 10px 18px; font-weight:600;
+      box-shadow: 0 6px 18px rgba(255,46,99,.27);
+      transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
+    }
+    .btn:hover{ transform: translateY(-1px); box-shadow: 0 10px 24px rgba(255,46,99,.35); filter:saturate(1.05); }
+    .btn:active{ transform: translateY(0); }
+
+    /* Lightbox */
+    .lightbox{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background: rgba(9,9,12,.8); z-index:50; }
+    .lightbox.open{ display:flex; }
+    .lightbox-inner{ max-width: 92vw; max-height: 86vh; }
+    .lightbox img, .lightbox video{ max-width:100%; max-height:86vh; border-radius: 12px; }
+
+    /* Tiny glow title */
+    .title{
+      font-family: "Marck Script", cursive;
+      text-shadow: 0 4px 28px rgba(255,46,99,.25);
+      letter-spacing: .5px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Loader -->
+  <div class="loader" id="loader">
+    <div class="flex flex-col items-center gap-6">
+      <div class="heart"></div>
+      <div class="text-pink-200/90 text-sm tracking-wide">Готовим вашу магию воспоминаний…</div>
+    </div>
+  </div>
+
+  <!-- Floating hearts -->
+  <div class="hearts-bg" id="hearts"></div>
+
+  <!-- Page -->
+  <div class="relative z-10 min-h-screen">
+    <header class="pt-10 sm:pt-14 text-center">
+      <h1 class="title text-4xl sm:text-5xl md:text-6xl font-semibold text-pink-300">
+        {{ gallery.get_occasion_display }} ❤️
+      </h1>
+      {% if gallery.title %}
+        <p class="mt-3 text-pink-100/80 text-lg">{{ gallery.title }}</p>
+      {% endif %}
+      <p class="mt-1 text-pink-100/60 text-sm">Галерея навсегда по ссылке: <span class="text-pink-200/90 font-medium">/g/{{ gallery.public_url_slug }}</span></p>
+    </header>
+
+    <main class="mx-auto max-w-6xl px-4 sm:px-6 pb-24">
+      <!-- Messages -->
+      <div class="mt-6 space-y-2">
+        {% if messages %}
+          {% for m in messages %}
+            <div class="glass rounded-xl px-4 py-3 border
+                        {% if m.tags == 'success' %} border-emerald-500/40 text-emerald-100 {% elif m.tags == 'warning' %} border-amber-500/40 text-amber-100 {% elif m.tags == 'error' %} border-rose-500/40 text-rose-100 {% else %} border-white/10 text-slate-100 {% endif %}">
+              {{ m }}
+            </div>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      <!-- Upload Card -->
+      <section class="mt-8 glass rounded-2xl p-5 sm:p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h2 class="text-xl font-semibold">Добавить воспоминания</h2>
+            <p class="text-pink-100/70 text-sm">Фото или видео. До {{ max_mb }} МБ на файл.</p>
+          </div>
+          <button type="button" id="toggleUpload" class="btn">Загрузить файлы</button>
+        </div>
+
+        <form id="uploadForm" class="mt-5 hidden" method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          <div id="dropzone" class="dropzone p-5 sm:p-6">
+            <div class="flex flex-col items-center gap-2 text-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 text-pink-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.2" d="M3 15a4 4 0 014-4h1m6 0h1a4 4 0 110 8H7a4 4 0 01-4-4m7-6l2-2m0 0l2 2m-2-2v8" />
+              </svg>
+              <p class="text-pink-100/90"><span class="font-semibold">Перетащите</span> сюда файлы или <span class="font-semibold">выберите</span></p>
+              <input id="fileInput" class="mt-3 block w-full text-sm text-pink-50/90" type="file" name="files" accept="image/*,video/*" multiple required />
+              <div class="w-full grid gap-3 sm:grid-cols-3 mt-4">
+                <input type="text" name="caption" maxlength="200" placeholder="Подпись (для всех файлов)"
+                  class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 placeholder-pink-100/40 focus:outline-none focus:ring-2 focus:ring-rose-500/60">
+                {% if need_pin %}
+                <input type="text" name="pin" maxlength="12" placeholder="PIN для загрузки"
+                  class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 placeholder-pink-100/40 focus:outline-none focus:ring-2 focus:ring-rose-500/60">
+                {% endif %}
+                <button type="submit" class="btn w-full sm:w-auto">Загрузить</button>
+              </div>
+              <p class="text-xs text-pink-100/60 mt-2">Поддерживаются изображения и видео. Лимит — {{ max_mb }} МБ на файл.</p>
+            </div>
+          </div>
+        </form>
+      </section>
+
+      <!-- Empty hint -->
+      {% if not media_items %}
+        <div class="text-center mt-12 text-pink-100/80">Здесь пока пусто. Добавьте первые воспоминания 💖</div>
+      {% endif %}
+
+      <!-- Masonry Gallery -->
+      <section class="mt-8">
+        <div class="masonry" id="galleryMasonry">
+          {% for item in media_items %}
+            <article class="masonry-item group">
+              {% if item.kind == "image" %}
+                <img src="{{ item.file.url }}" alt="{{ item.caption }}" loading="lazy" class="w-full h-auto block">
+              {% elif item.kind == "video" %}
+                <video controls preload="metadata" class="w-full h-auto block">
+                  <source src="{{ item.file.url }}#t=0.1" type="{{ item.mime_type }}">
+                </video>
+              {% endif %}
+              {% if item.caption %}<div class="caption">{{ item.caption }}</div>{% endif %}
+            </article>
+          {% endfor %}
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Lightbox -->
+  <div id="lightbox" class="lightbox">
+    <div class="lightbox-inner" id="lightboxInner"></div>
+  </div>
+
+  <script>
+    // Loader hide
+    window.addEventListener('load', () => {
+      const loader = document.getElementById('loader');
+      loader.style.opacity = '0';
+      loader.style.transition = 'opacity .6s ease';
+      setTimeout(() => loader.style.display = 'none', 600);
+    });
+
+    // Floating hearts generation
+    const hearts = document.getElementById('hearts');
+    const HCOUNT = 28;
+    for(let i=0;i<HCOUNT;i++){
+      const s = document.createElement('span');
+      const left = Math.random()*100;
+      const delay = Math.random()*6;
+      const scale = .6 + Math.random()*.9;
+      s.style.left = left + 'vw';
+      s.style.animationDelay = delay + 's';
+      s.style.transform = `rotate(45deg) scale(${scale})`;
+      hearts.appendChild(s);
+    }
+
+    // Upload reveal
+    document.getElementById('toggleUpload').addEventListener('click', () => {
+      const f = document.getElementById('uploadForm');
+      f.classList.toggle('hidden');
+    });
+
+    // Dropzone
+    const drop = document.getElementById('dropzone');
+    const input = document.getElementById('fileInput');
+    ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => {
+      e.preventDefault(); e.stopPropagation(); drop.classList.add('dragover');
+    }));
+    ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => {
+      e.preventDefault(); e.stopPropagation(); drop.classList.remove('dragover');
+    }));
+    drop.addEventListener('drop', e => {
+      const files = e.dataTransfer.files;
+      if(files?.length){ input.files = files; }
+    });
+
+    // Lightbox
+    const lb = document.getElementById('lightbox');
+    const lbi = document.getElementById('lightboxInner');
+    document.getElementById('galleryMasonry')?.addEventListener('click', e => {
+      const t = e.target;
+      if(t.tagName === 'IMG'){
+        lbi.innerHTML = `<img src="${t.src}" alt="" />`;
+        lb.classList.add('open');
+      }else if(t.tagName === 'VIDEO'){
+        // open video as clone to avoid stealing controls element
+        const src = t.querySelector('source')?.src || t.currentSrc || '';
+        lbi.innerHTML = `<video controls autoplay><source src="${src}" type="video/mp4"></video>`;
+        lb.classList.add('open');
+      }
+    });
+    lb.addEventListener('click', () => lb.classList.remove('open'));
+
+    // Subtle entrance animations
+    const items = document.querySelectorAll('.masonry-item');
+    const io = new IntersectionObserver(entries=>{
+      entries.forEach(entry=>{
+        if(entry.isIntersecting){
+          entry.target.style.opacity = 0;
+          entry.target.style.transform = 'translateY(8px)';
+          entry.target.style.transition = 'opacity .5s ease, transform .5s ease';
+          requestAnimationFrame(()=>{
+            entry.target.style.opacity = 1;
+            entry.target.style.transform = 'translateY(0)';
+          });
+          io.unobserve(entry.target);
+        }
+      })
+    }, {rootMargin:'0px 0px -10% 0px'});
+    items.forEach(el=>io.observe(el));
+  </script>
+</body>
+</html>

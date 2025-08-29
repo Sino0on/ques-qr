@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8"/>
+  <title>{{ gallery.title|default:"Моя галерея" }}</title>
+  {% load static %}
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:#fafafa; margin:0; }
+    header { text-align:center; padding:24px 16px; }
+    h1 { margin:0 0 6px; font-size:28px; }
+    .sub { color:#666; }
+    .wrap { max-width:1000px; margin:0 auto; padding:0 16px 60px; }
+
+    .grid { display:flex; flex-wrap:wrap; gap:16px; margin-top:20px; }
+    .item { background:#fff; border-radius:10px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,.08); width:300px; }
+    .item img, .item video { width:100%; height:auto; display:block; }
+    .cap { padding:10px 12px; font-size:14px; color:#444; }
+
+    .card { background:#fff; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,.08); padding:16px; margin-top:10px; }
+    .form-row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    input[type="file"] { padding:8px; }
+    input[type="text"] { padding:10px 12px; border:1px solid #ddd; border-radius:8px; }
+    button { padding:10px 16px; border:none; border-radius:8px; background:#111; color:#fff; cursor:pointer; }
+    button:hover { opacity:.9; }
+    .hint { color:#666; font-size:13px; margin-top:6px; }
+    .empty { text-align:center; padding:40px 0; color:#666; }
+    .messages { margin: 10px 0; }
+    .messages .msg { padding:10px 12px; border-radius:8px; margin-bottom:8px; }
+    .success { background:#e7f7ee; color:#135f2d; }
+    .warning { background:#fff7e6; color:#8a5a00; }
+    .error { background:#fdecea; color:#8a1c1c; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>{{ gallery.get_occasion_display }} 💌</h1>
+    {% if gallery.title %}<div class="sub">{{ gallery.title }}</div>{% endif %}
+  </header>
+
+  <div class="wrap">
+    {# сообщения Django messages #}
+    <div class="messages">
+      {% if messages %}
+        {% for m in messages %}
+          <div class="msg {{ m.tags }}">{{ m }}</div>
+        {% endfor %}
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="form-row">
+          <input type="file" name="files" accept="image/*,video/*" multiple required>
+          <input type="text" name="caption" placeholder="Подпись (опционально)" maxlength="200">
+          {% if need_pin %}
+            <input type="text" name="pin" placeholder="PIN для загрузки" maxlength="12" required>
+          {% endif %}
+          <button type="submit">Загрузить</button>
+        </div>
+        <div class="hint">Допустимо: фото/видео. Максимум {{ max_mb }} MB на файл.</div>
+      </form>
+    </div>
+
+    {% if media_items %}
+      <div class="grid">
+        {% for item in media_items %}
+          <div class="item">
+            {% if item.kind == "image" %}
+              <img src="{{ item.file.url }}" alt="{{ item.caption }}">
+            {% elif item.kind == "video" %}
+              <video controls>
+                <source src="{{ item.file.url }}" type="{{ item.mime_type }}">
+                Ваш браузер не поддерживает видео.
+              </video>
+            {% endif %}
+            {% if item.caption %}<div class="cap">{{ item.caption }}</div>{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty">Здесь пока пусто. Загрузите первые воспоминания 💖</div>
+    {% endif %}
+  </div>
+</body>
+</html>
