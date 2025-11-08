@@ -23,6 +23,9 @@
                   linear-gradient(180deg, var(--grad1), var(--grad2));
       color:#f8f7fb;
       overflow-x:hidden;
+      background-repeat: no-repeat, no-repeat; /* не дублировать слои */
+      background-size: 120% 100%, cover;      /* растягивать */
+      background-attachment: fixed, fixed;    /* закрепить фон */
     }
 
     /* Loader */
@@ -72,24 +75,59 @@
       backdrop-filter: blur(10px);
     }
 
-    /* Masonry grid (CSS columns) */
-    .masonry{
-      column-count:1;
-      column-gap: 1rem;
+    /* Generic responsive grid */
+    .gridx{ display:grid; grid-template-columns: 1fr; gap: 1rem; }
+    @media (min-width: 640px){ .gridx{ grid-template-columns: repeat(2, 1fr); } }
+    @media (min-width: 1024px){ .gridx{ grid-template-columns: repeat(3, 1fr); } }
+
+    /* Beautiful arrangement for exactly 5 items */
+    .grid5{ display:grid; gap: 1rem; grid-template-columns: 1fr; }
+    .cell-A{ }
+    @media (min-width: 768px){
+      .grid5{ grid-template-columns: repeat(4, 1fr); grid-template-rows: auto; }
+      /* layout:
+         A A B C
+         A A D E
+      */
+      .cell-A{ grid-column: 1 / span 2; grid-row: 1 / span 2; }
+      .cell-B{ grid-column: 3 / span 1; grid-row: 1; }
+      .cell-C{ grid-column: 4 / span 1; grid-row: 1; }
+      .cell-D{ grid-column: 3 / span 1; grid-row: 2; }
+      .cell-E{ grid-column: 4 / span 1; grid-row: 2; }
     }
-    @media (min-width: 640px){ .masonry{ column-count:2; } }
-    @media (min-width: 1024px){ .masonry{ column-count:3; } }
     .masonry-item{
-      break-inside: avoid; margin-bottom: 1rem; border-radius: 16px; overflow:hidden;
-      background: rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08);
+      border-radius: 16px; overflow:hidden; background: rgba(255,255,255,.05);
+      border:2px solid rgba(255,255,255,.12);
+      box-shadow: 0 0 0 3px rgba(255,46,99,.12) inset, 0 10px 30px rgba(255,46,99,.08);
       transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+      display:flex; flex-direction:column;
     }
     .masonry-item:hover{
       transform: translateY(-3px);
       box-shadow: 0 12px 30px rgba(255,46,99,.12);
       border-color: rgba(255,46,99,.35);
     }
+    .tile-lg{ grid-column: span 2; }
     .caption{ padding: 12px 14px; color:#e9e7f4; font-size: 14px; }
+
+    /* Media frame */
+    .media-frame{ position:relative; width:100%; padding:18px; background: radial-gradient(circle at 50% 0%, rgba(255,46,99,.25), rgba(12,12,18,.65)); border-radius:14px; display:flex; align-items:center; justify-content:center; min-height:300px; }
+    .grid5 .cell-A .media-frame{ min-height:380px; }
+    .media-frame::after{ content:""; position:absolute; inset:12px; border-radius:12px; border:1px dashed rgba(255,255,255,.25); pointer-events:none; }
+    .media-frame img,
+    .media-frame video{ position:relative; max-width:100%; max-height:100%; border-radius:12px; box-shadow:0 8px 26px rgba(0,0,0,.25); object-fit:contain; }
+    .media-frame video{ background:#000; }
+
+    @media (max-width: 640px){
+      .media-frame{ min-height:240px; padding:14px; }
+      .grid5 .cell-A .media-frame{ min-height:300px; }
+    }
+
+    /* Inline actions (hidden until hover) */
+    .actions{ position:absolute; top:10px; right:10px; display:flex; gap:8px; opacity:0; transform: translateY(-4px); transition: opacity .2s ease, transform .2s ease; }
+    .masonry-item:hover .actions{ opacity:1; transform: translateY(0); }
+    .btn-ghost{ padding:6px 10px; border-radius:999px; background: rgba(12,12,18,.45); border:1px solid rgba(255,255,255,.14); color:#fff; font-size:12px; backdrop-filter: blur(6px); }
+    .btn-ghost:hover{ background: rgba(255,46,99,.25); border-color: rgba(255,46,99,.45); }
 
     /* Upload dropzone */
     .dropzone{
@@ -123,6 +161,16 @@
       text-shadow: 0 4px 28px rgba(255,46,99,.25);
       letter-spacing: .5px;
     }
+
+    /* Floating action button */
+    .fab{ position:fixed; right:20px; top:20px; z-index:40; width:56px; height:56px; border-radius:999px; display:flex; align-items:center; justify-content:center;
+          background: linear-gradient(135deg, var(--rose), var(--rose-2)); color:#fff; box-shadow: 0 12px 28px rgba(255,46,99,.35), inset 0 0 18px rgba(255,255,255,.15); }
+    .fab:hover{ filter: saturate(1.08); transform: translateY(-1px); transition: transform .15s ease; }
+
+    /* Upload modal */
+    .modal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background: rgba(9,9,12,.75); z-index:60; padding: 16px; }
+    .modal.open{ display:flex; }
+    .modal-card{ width:100%; max-width: 720px; border-radius: 16px; }
   </style>
 </head>
 <body>
@@ -140,6 +188,12 @@
 
   <!-- Page -->
   <div class="relative z-10 min-h-screen">
+    <!-- Floating Upload Button -->
+    <button id="fabUpload" aria-label="Добавить" class="fab">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/>
+      </svg>
+    </button>
     <header class="pt-10 sm:pt-14 text-center">
       <h1 class="title text-4xl sm:text-5xl md:text-6xl font-semibold text-pink-300">
         {{ gallery.get_occasion_display }} ❤️
@@ -163,39 +217,39 @@
         {% endif %}
       </div>
 
-      <!-- Upload Card -->
-      <section class="mt-8 glass rounded-2xl p-5 sm:p-6">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h2 class="text-xl font-semibold">Добавить воспоминания</h2>
-            <p class="text-pink-100/70 text-sm">Фото или видео. До {{ max_mb }} МБ на файл.</p>
+      <!-- Upload Modal -->
+      <div id="uploadModal" class="modal">
+        <div class="modal-card glass border p-5 sm:p-6">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-semibold">Добавить воспоминания</h2>
+            <button id="closeUpload" class="btn px-3 py-1" type="button">Закрыть</button>
           </div>
-          <button type="button" id="toggleUpload" class="btn">Загрузить файлы</button>
-        </div>
-
-        <form id="uploadForm" class="mt-5 hidden" method="post" enctype="multipart/form-data">
-          {% csrf_token %}
-          <div id="dropzone" class="dropzone p-5 sm:p-6">
-            <div class="flex flex-col items-center gap-2 text-center">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 text-pink-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.2" d="M3 15a4 4 0 014-4h1m6 0h1a4 4 0 110 8H7a4 4 0 01-4-4m7-6l2-2m0 0l2 2m-2-2v8" />
-              </svg>
-              <p class="text-pink-100/90"><span class="font-semibold">Перетащите</span> сюда файлы или <span class="font-semibold">выберите</span></p>
-              <input id="fileInput" class="mt-3 block w-full text-sm text-pink-50/90" type="file" name="files" accept="image/*,video/*" multiple required />
-              <div class="w-full grid gap-3 sm:grid-cols-3 mt-4">
-                <input type="text" name="caption" maxlength="200" placeholder="Подпись (для всех файлов)"
-                  class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 placeholder-pink-100/40 focus:outline-none focus:ring-2 focus:ring-rose-500/60">
-                {% if need_pin %}
-                <input type="text" name="pin" maxlength="12" placeholder="PIN для загрузки"
-                  class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 placeholder-pink-100/40 focus:outline-none focus:ring-2 focus:ring-rose-500/60">
-                {% endif %}
-                <button type="submit" class="btn w-full sm:w-auto">Загрузить</button>
+          <form id="uploadForm" method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div id="dropzone" class="dropzone p-5 sm:p-6">
+              <div class="flex flex-col items-center gap-2 text-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 text-pink-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.2" d="M3 15a4 4 0 014-4h1m6 0h1a4 4 0 110 8H7a4 4 0 01-4-4m7-6l2-2m0 0l2 2m-2-2v8" />
+                </svg>
+                <p class="text-pink-100/90"><span class="font-semibold">Перетащите</span> сюда файлы или <span class="font-semibold">выберите</span></p>
+                <input id="fileInput" class="mt-3 block w-full text-sm text-pink-50/90" type="file" name="files" accept="image/*,video/*" multiple required />
+                <div class="w-full grid gap-3 sm:grid-cols-3 mt-4">
+                  <input type="text" name="caption" maxlength="200" placeholder="Подпись (для всех файлов)"
+                    class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 placeholder-pink-100/40 focus:outline-none focus:ring-2 focus:ring-rose-500/60">
+                  <input type="number" name="sort_order" min="0" placeholder="Порядок (начиная с)"
+                    class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 placeholder-pink-100/40 focus:outline-none focus:ring-2 focus:ring-rose-500/60">
+                  {% if need_pin %}
+                  <input type="text" name="pin" maxlength="12" placeholder="PIN для загрузки"
+                    class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 placeholder-pink-100/40 focus:outline-none focus:ring-2 focus:ring-rose-500/60">
+                  {% endif %}
+                  <button type="submit" class="btn w-full sm:w-auto">Загрузить</button>
+                </div>
+                <p class="text-xs text-pink-100/60 mt-2">Поддерживаются изображения и видео. Лимит — {{ max_mb }} МБ на файл.</p>
               </div>
-              <p class="text-xs text-pink-100/60 mt-2">Поддерживаются изображения и видео. Лимит — {{ max_mb }} МБ на файл.</p>
             </div>
-          </div>
-        </form>
-      </section>
+          </form>
+        </div>
+      </div>
 
       <!-- Empty hint -->
       {% if not media_items %}
@@ -203,21 +257,54 @@
       {% endif %}
 
       <!-- Masonry Gallery -->
-      <section class="mt-8">
-        <div class="masonry" id="galleryMasonry">
+      <section class="mt-8 pb-8">
+        {% if media_items|length == 5 %}
+        <div class="grid5" id="galleryMasonry">
           {% for item in media_items %}
-            <article class="masonry-item group">
-              {% if item.kind == "image" %}
-                <img src="{{ item.file.url }}" alt="{{ item.caption }}" loading="lazy" class="w-full h-auto block">
-              {% elif item.kind == "video" %}
-                <video controls preload="metadata" class="w-full h-auto block">
-                  <source src="{{ item.file.url }}#t=0.1" type="{{ item.mime_type }}">
-                </video>
-              {% endif %}
+            <article class="masonry-item group relative {% if forloop.counter == 1 %}cell-A{% elif forloop.counter == 2 %}cell-B{% elif forloop.counter == 3 %}cell-C{% elif forloop.counter == 4 %}cell-D{% elif forloop.counter == 5 %}cell-E{% endif %}">
+              <div class="actions">
+                <form method="post" action="{% url 'media_delete' uuid=gallery.uuid item_id=item.id %}" onsubmit="return confirm('Удалить этот медиафайл?');">
+                  {% csrf_token %}
+                  <button type="submit" class="btn-ghost">Удалить</button>
+                </form>
+              </div>
+              <div class="media-frame">
+                {% if item.kind == "image" %}
+                  <img src="{{ item.file.url }}" alt="{{ item.caption }}" loading="lazy">
+                {% elif item.kind == "video" %}
+                  <video controls preload="metadata">
+                    <source src="{{ item.file.url }}#t=0.1" type="{{ item.mime_type }}">
+                  </video>
+                {% endif %}
+              </div>
               {% if item.caption %}<div class="caption">{{ item.caption }}</div>{% endif %}
             </article>
           {% endfor %}
         </div>
+        {% else %}
+        <div class="gridx" id="galleryMasonry">
+          {% for item in media_items %}
+            <article class="masonry-item group relative">
+              <div class="actions">
+                <form method="post" action="{% url 'media_delete' uuid=gallery.uuid item_id=item.id %}" onsubmit="return confirm('Удалить этот медиафайл?');">
+                  {% csrf_token %}
+                  <button type="submit" class="btn-ghost">Удалить</button>
+                </form>
+              </div>
+              <div class="media-frame">
+                {% if item.kind == "image" %}
+                  <img src="{{ item.file.url }}" alt="{{ item.caption }}" loading="lazy">
+                {% elif item.kind == "video" %}
+                  <video controls preload="metadata">
+                    <source src="{{ item.file.url }}#t=0.1" type="{{ item.mime_type }}">
+                  </video>
+                {% endif %}
+              </div>
+              {% if item.caption %}<div class="caption">{{ item.caption }}</div>{% endif %}
+            </article>
+          {% endfor %}
+        </div>
+        {% endif %}
       </section>
     </main>
   </div>
@@ -250,11 +337,13 @@
       hearts.appendChild(s);
     }
 
-    // Upload reveal
-    document.getElementById('toggleUpload').addEventListener('click', () => {
-      const f = document.getElementById('uploadForm');
-      f.classList.toggle('hidden');
-    });
+    // Upload modal controls
+    const fab = document.getElementById('fabUpload');
+    const modal = document.getElementById('uploadModal');
+    const closeBtn = document.getElementById('closeUpload');
+    fab.addEventListener('click', ()=> modal.classList.add('open'));
+    closeBtn.addEventListener('click', ()=> modal.classList.remove('open'));
+    modal.addEventListener('click', (e)=>{ if(e.target === modal){ modal.classList.remove('open'); }});
 
     // Dropzone
     const drop = document.getElementById('dropzone');

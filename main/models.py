@@ -1,6 +1,5 @@
 import uuid
 import mimetypes
-from django.conf import settings
 from django.db import models
 
 
@@ -19,25 +18,18 @@ class Occasion(models.TextChoices):
     WOMEN_DAY = "womens_day", "8 марта"
     BIRTHDAY  = "birthday", "День рождения"
     ANNIVERS  = "anniversary", "Годовщина"
-    OTHER     = "other", "Другое"
+    NEW_YEAR  = "new_year", "Новый год"
+    OTHER     = "classic", "Классическая"
 
 
 class Gallery(models.Model):
     """
     Личное «хранилище воспоминаний», доступное по уникальной ссылке (uuid).
-    К галерее можно привязать несколько физических QR-брелков (QRTag).
+    QR-код для перехода генерируется по ссылке галереи (uuid).
     """
     uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False, db_index=True, verbose_name="UUID")
-    owner = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True, blank=True,
-        related_name="galleries",
-        verbose_name="Владелец"
-    )
     title = models.CharField(max_length=120, blank=True, help_text="Опциональный заголовок галереи", verbose_name="Заголовок")
-    occasion = models.CharField(max_length=32, choices=Occasion.choices, default=Occasion.OTHER, verbose_name="Повод")
-    template_key = models.CharField(max_length=64, default="default", verbose_name="Шаблон")
+    template_key = models.CharField(max_length=32, choices=Occasion.choices, default=Occasion.OTHER, verbose_name="Повод")
 
     first_opened_at = models.DateTimeField(null=True, blank=True, verbose_name="Первое открытие")
 
@@ -55,32 +47,11 @@ class Gallery(models.Model):
         verbose_name_plural = "Галереи"
 
     def __str__(self):
-        return f"Галерея {self.uuid} ({self.get_occasion_display()})"
+        return f"Галерея {self.uuid}"
 
     @property
     def public_url_slug(self) -> str:
         return str(self.uuid)
-
-
-class QRTag(models.Model):
-    """
-    Физический QR (брелок/наклейка), который ведёт на конкретную галерею.
-    Можно продавать 2 одинаковых QR к одной и той же Gallery.
-    """
-    gallery = models.ForeignKey(Gallery, on_delete=models.CASCADE, related_name="qr_tags", verbose_name="Галерея")
-    serial = models.CharField(max_length=40, blank=True, db_index=True, verbose_name="Серийный номер")
-    token = models.CharField(max_length=36, unique=True, default=generate_token_hex, verbose_name="Токен")
-    note = models.CharField(max_length=120, blank=True, verbose_name="Заметка")
-
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Создано")
-
-    class Meta:
-        indexes = [models.Index(fields=["token"])]
-        verbose_name = "QR-брелок"
-        verbose_name_plural = "QR-брелки"
-
-    def __str__(self):
-        return f"QR {self.token} → Галерея {self.gallery_id}"
 
 
 class MediaItem(models.Model):
@@ -103,13 +74,6 @@ class MediaItem(models.Model):
     file_size = models.BigIntegerField(default=0, verbose_name="Размер файла (байт)")
     duration_sec = models.PositiveIntegerField(default=0, help_text="Для видео, если нужно", blank=True, verbose_name="Длительность (сек)")
 
-    uploaded_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True, blank=True,
-        related_name="uploaded_media",
-        verbose_name="Кем загружено"
-    )
     uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name="Загружено")
 
     class Meta:

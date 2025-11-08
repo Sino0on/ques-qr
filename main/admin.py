@@ -11,17 +11,7 @@ from django import forms
 
 from django.utils.safestring import mark_safe
 
-from .models import Gallery, MediaItem, QRTag, VisitLog, Occasion
-
-
-# ---------- Inlines ----------
-
-class QRTagInline(admin.TabularInline):
-    model = QRTag
-    extra = 0
-    readonly_fields = ("token", "created_at")
-    fields = ("token", "serial", "note", "created_at")
-    show_change_link = True
+from .models import Gallery, MediaItem, VisitLog
 
 
 class MediaItemInline(admin.TabularInline):
@@ -43,16 +33,7 @@ class MediaItemInline(admin.TabularInline):
         return "—"
 
 
-# ---------- Admin Action с формой (кол-во QR для генерации) ----------
-
-class GenerateQRActionForm(ActionForm):
-    count = forms.IntegerField(
-        label="Сколько QR сгенерировать на галерею",
-        min_value=1,
-        max_value=200,
-        initial=2,
-        help_text="Будут созданы новые QRTag с уникальными токенами"
-    )
+# (Удалено) Генерация отдельных QRTag — больше не требуется
 
 
 # ---------- Gallery Admin ----------
@@ -62,34 +43,30 @@ class GalleryAdmin(admin.ModelAdmin):
     list_display = (
         "uuid",
         "title",
-        "occasion",
         "template_key",
-        "owner",
         "media_count",
-        "qrtag_count",
+        "qr_preview_small",
         "is_active",
         "created_at",
         "public_path",
     )
-    list_filter = ("occasion", "is_active", "created_at", "updated_at")
-    search_fields = ("uuid", "title", "owner__username", "owner__email", "template_key")
-    readonly_fields = ("uuid", "first_opened_at", "created_at", "updated_at", "public_path_help")
-    inlines = (QRTagInline, MediaItemInline)
+    list_filter = ("is_active", "created_at", "updated_at")
+    search_fields = ("uuid", "title", "template_key")
+    readonly_fields = ("uuid", "first_opened_at", "created_at", "updated_at", "public_path_help", "qr_preview_big", "qr_download_help")
+    inlines = (MediaItemInline,)
 
-    # Экшен и форма к нему
-    actions = ("generate_qr_tags",)
-    action_form = GenerateQRActionForm
+    # Экшены для QR не нужны, QR генерируется по uuid галереи
 
     fieldsets = (
         ("Основное", {
-            "fields": ("uuid", "title", "occasion", "template_key", "owner", "is_active"),
+            "fields": ("uuid", "title", "template_key", "is_active"),
         }),
         ("Доступ и защита (необязательно)", {
             "fields": ("view_pin", "upload_pin"),
             "classes": ("collapse",)
         }),
         ("Служебное", {
-            "fields": ("first_opened_at", "public_path_help", "created_at", "updated_at"),
+            "fields": ("first_opened_at", "public_path_help", "qr_preview_big", "qr_download_help", "created_at", "updated_at"),
         }),
     )
 
@@ -109,48 +86,38 @@ class GalleryAdmin(admin.ModelAdmin):
     def media_count(self, obj: Gallery):
         return obj.media.count()
 
-    @admin.display(description="QR", ordering="id")
-    def qrtag_count(self, obj: Gallery):
-        return obj.qr_tags.count()
-
-    @admin.action(description="Сгенерировать QR-брелки с токенами")
-    def generate_qr_tags(self, request, queryset):
-        count = self.action_form.cleaned_data.get("count", 2) if hasattr(self, "action_form") else 2
-        total_created = 0
-        for gallery in queryset:
-            batch = [QRTag(gallery=gallery) for _ in range(count)]
-            QRTag.objects.bulk_create(batch)
-            total_created += len(batch)
-        self.message_user(
-            request,
-            f"Создано {total_created} QRTag для {queryset.count()} галерей.",
-            level=messages.SUCCESS
-        )
-
-
-# ---------- QRTag Admin ----------
-
-@admin.register(QRTag)
-class QRTagAdmin(admin.ModelAdmin):
-    list_display = ("token", "gallery", "qr_preview", "created_at")
-
-    @admin.display(description="QR-код")
-    def qr_preview(self, obj):
-        url = f"/g/{obj.gallery.public_url_slug}"
+    @admin.display(description="QR")
+    def qr_preview_small(self, obj: Gallery):
+        url = f"/g/{obj.public_url_slug}"
         img = qrcode.make(url)
         buffer = BytesIO()
         img.save(buffer, format="PNG")
         img_str = base64.b64encode(buffer.getvalue()).decode("utf-8")
         return format_html(
-            '<img src="data:image/png;base64,{}" width="100" height="100"/>'
-            '<br><a href="/qr/{}/download/" target="_blank">Скачать</a>',
-            img_str, obj.token
+            '<img src="data:image/png;base64,{}" width="70" height="70"/>',
+            img_str
         )
 
-    @admin.display(description="Путь")
-    def public_path(self, obj: QRTag):
-        # Токен можно тоже использовать как короткую ссылку, если так решишь
-        return f"/g/{obj.gallery.public_url_slug}"
+    @admin.display(description="QR-код (крупно)")
+    def qr_preview_big(self, obj: Gallery):
+        url = f"/g/{obj.public_url_slug}"
+        img = qrcode.make(url)
+        buffer = BytesIO()
+        img.save(buffer, format="PNG")
+        img_str = base64.b64encode(buffer.getvalue()).decode("utf-8")
+        return format_html(
+            '<img src="data:image/png;base64,{}" width="180" height="180"/>',
+            img_str
+        )
+
+    @admin.display(description="Скачать QR")
+    def qr_download_help(self, obj: Gallery):
+        return mark_safe(
+            f'<a href="/qr/{obj.public_url_slug}/download/" target="_blank">Скачать PNG</a>'
+        )
+
+
+## Раздел для QRTag удалён — теперь QR встроен в Gallery
 
 
 # ---------- MediaItem Admin ----------

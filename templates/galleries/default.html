@@ -11,8 +11,26 @@
     .sub { color:#666; }
     .wrap { max-width:1000px; margin:0 auto; padding:0 16px 60px; }
 
-    .grid { display:flex; flex-wrap:wrap; gap:16px; margin-top:20px; }
-    .item { background:#fff; border-radius:10px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,.08); width:300px; }
+    .grid { display:grid; grid-template-columns: repeat(1, minmax(0, 1fr)); gap:16px; margin-top:20px; }
+    @media (min-width: 700px){ .grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (min-width: 1024px){ .grid { grid-template-columns: repeat(3, 1fr); } }
+    .tile-lg { grid-column: span 2; }
+
+    /* Special layout for exactly 5 items */
+    .grid5 { display:grid; gap:16px; grid-template-columns: 1fr; }
+    @media (min-width: 760px){
+      .grid5 { grid-template-columns: repeat(4, 1fr); }
+      .cell-A { grid-column: 1 / span 2; grid-row: 1 / span 2; }
+      .cell-B { grid-column: 3 / span 1; grid-row: 1; }
+      .cell-C { grid-column: 4 / span 1; grid-row: 1; }
+      .cell-D { grid-column: 3 / span 1; grid-row: 2; }
+      .cell-E { grid-column: 4 / span 1; grid-row: 2; }
+    }
+    .item { position:relative; background:#fff; border-radius:10px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,.08); width:300px; }
+    .actions { position:absolute; top:8px; right:8px; opacity:0; transform: translateY(-4px); transition: opacity .2s ease, transform .2s ease; }
+    .item:hover .actions { opacity:1; transform: translateY(0); }
+    .btn-ghost { padding:6px 10px; border-radius:20px; background:rgba(17,17,17,.7); color:#fff; border:none; }
+    .btn-ghost:hover { background:#b11a24; }
     .item img, .item video { width:100%; height:auto; display:block; }
     .cap { padding:10px 12px; font-size:14px; color:#444; }
 
@@ -29,6 +47,13 @@
     .success { background:#e7f7ee; color:#135f2d; }
     .warning { background:#fff7e6; color:#8a5a00; }
     .error { background:#fdecea; color:#8a1c1c; }
+
+    /* Floating upload button and modal */
+    .fab { position:fixed; right:16px; top:16px; z-index:40; width:54px; height:54px; border-radius:999px; display:flex; align-items:center; justify-content:center; background:#111; color:#fff; box-shadow:0 10px 22px rgba(0,0,0,.25); }
+    .fab:hover { opacity:.95; transform: translateY(-1px); }
+    .modal { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background: rgba(0,0,0,.65); z-index:60; padding: 16px; }
+    .modal.open { display:flex; }
+    .modal-card { background:#fff; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.25); padding:16px; max-width:720px; width:100%; }
   </style>
 </head>
 <body>
@@ -38,6 +63,9 @@
   </header>
 
   <div class="wrap">
+    <button id="fabUpload" aria-label="Добавить" class="fab">
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/></svg>
+    </button>
     {# сообщения Django messages #}
     <div class="messages">
       {% if messages %}
@@ -47,25 +75,40 @@
       {% endif %}
     </div>
 
-    <div class="card">
-      <form method="post" enctype="multipart/form-data">
-        {% csrf_token %}
-        <div class="form-row">
-          <input type="file" name="files" accept="image/*,video/*" multiple required>
-          <input type="text" name="caption" placeholder="Подпись (опционально)" maxlength="200">
-          {% if need_pin %}
-            <input type="text" name="pin" placeholder="PIN для загрузки" maxlength="12" required>
-          {% endif %}
-          <button type="submit">Загрузить</button>
+    <!-- Upload Modal -->
+    <div id="uploadModal" class="modal">
+      <div class="modal-card">
+        <div class="form-row" style="justify-content: space-between; margin-bottom: 8px;">
+          <h2 style="margin:0; font-size:18px;">Добавить воспоминания</h2>
+          <button id="closeUpload" type="button" style="padding:8px 12px; border:none; border-radius:8px; background:#111; color:#fff;">Закрыть</button>
         </div>
-        <div class="hint">Допустимо: фото/видео. Максимум {{ max_mb }} MB на файл.</div>
-      </form>
+        <form method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          <div class="form-row" style="align-items:flex-start; gap:12px;">
+            <input type="file" name="files" accept="image/*,video/*" multiple required>
+            <input type="text" name="caption" placeholder="Подпись (опционально)" maxlength="200">
+            <input type="number" name="sort_order" placeholder="Порядок (начиная с)" min="0" style="padding:10px 12px; border:1px solid #ddd; border-radius:8px; width:170px;">
+            {% if need_pin %}
+              <input type="text" name="pin" placeholder="PIN для загрузки" maxlength="12" required>
+            {% endif %}
+            <button type="submit">Загрузить</button>
+          </div>
+          <div class="hint">Допустимо: фото/видео. Максимум {{ max_mb }} MB на файл.</div>
+        </form>
+      </div>
     </div>
 
     {% if media_items %}
-      <div class="grid">
+      {% if media_items|length == 5 %}
+      <div class="grid5">
         {% for item in media_items %}
-          <div class="item">
+          <div class="item {% if forloop.counter == 1 %}cell-A{% elif forloop.counter == 2 %}cell-B{% elif forloop.counter == 3 %}cell-C{% elif forloop.counter == 4 %}cell-D{% elif forloop.counter == 5 %}cell-E{% endif %}">
+            <div class="actions">
+              <form method="post" action="{% url 'media_delete' uuid=gallery.uuid item_id=item.id %}" onsubmit="return confirm('Удалить этот медиафайл?');">
+                {% csrf_token %}
+                <button type="submit" class="btn-ghost">Удалить</button>
+              </form>
+            </div>
             {% if item.kind == "image" %}
               <img src="{{ item.file.url }}" alt="{{ item.caption }}">
             {% elif item.kind == "video" %}
@@ -78,9 +121,40 @@
           </div>
         {% endfor %}
       </div>
+      {% else %}
+      <div class="grid">
+        {% for item in media_items %}
+          <div class="item {% if forloop.first %}tile-lg{% endif %}">
+            <div class="actions">
+              <form method="post" action="{% url 'media_delete' uuid=gallery.uuid item_id=item.id %}" onsubmit="return confirm('Удалить этот медиафайл?');">
+                {% csrf_token %}
+                <button type="submit" class="btn-ghost">Удалить</button>
+              </form>
+            </div>
+            {% if item.kind == "image" %}
+              <img src="{{ item.file.url }}" alt="{{ item.caption }}">
+            {% elif item.kind == "video" %}
+              <video controls>
+                <source src="{{ item.file.url }}" type="{{ item.mime_type }}">
+                Ваш браузер не поддерживает видео.
+              </video>
+            {% endif %}
+            {% if item.caption %}<div class="cap">{{ item.caption }}</div>{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+      {% endif %}
     {% else %}
       <div class="empty">Здесь пока пусто. Загрузите первые воспоминания 💖</div>
     {% endif %}
   </div>
+  <script>
+    const fab = document.getElementById('fabUpload');
+    const modal = document.getElementById('uploadModal');
+    const closeBtn = document.getElementById('closeUpload');
+    fab.addEventListener('click', ()=> modal.classList.add('open'));
+    closeBtn.addEventListener('click', ()=> modal.classList.remove('open'));
+    modal.addEventListener('click', (e)=>{ if(e.target === modal){ modal.classList.remove('open'); }});
+  </script>
 </body>
 </html>

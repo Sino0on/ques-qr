@@ -7,33 +7,27 @@ from django.contrib import messages
 from django.utils import timezone
 from django.conf import settings
 
-from .models import Gallery, QRTag, MediaItem
+from .models import Gallery, MediaItem
 from .forms import MultiUploadForm
 
 # уже были:
-def qrcode_image(request, token: str):
-    try:
-        tag = QRTag.objects.select_related("gallery").get(token=token)
-    except QRTag.DoesNotExist:
-        raise Http404("QR не найден")
-    url = request.build_absolute_uri(f"/g/{tag.gallery.public_url_slug}")
+def qrcode_image(request, uuid: str):
+    gallery = get_object_or_404(Gallery, uuid=uuid)
+    url = request.build_absolute_uri(f"/g/{gallery.public_url_slug}")
     img = qrcode.make(url)
     resp = HttpResponse(content_type="image/png")
     img.save(resp, "PNG")
     return resp
 
-def qrcode_download(request, token: str):
-    try:
-        tag = QRTag.objects.select_related("gallery").get(token=token)
-    except QRTag.DoesNotExist:
-        raise Http404("QR не найден")
-    url = request.build_absolute_uri(f"/g/{tag.gallery.public_url_slug}")
+def qrcode_download(request, uuid: str):
+    gallery = get_object_or_404(Gallery, uuid=uuid)
+    url = request.build_absolute_uri(f"/g/{gallery.public_url_slug}")
     img = qrcode.make(url)
     buf = BytesIO()
     img.save(buf, "PNG")
     buf.seek(0)
     resp = HttpResponse(buf.getvalue(), content_type="image/png")
-    resp["Content-Disposition"] = f'attachment; filename="qrcode_{tag.token}.png"'
+    resp["Content-Disposition"] = f'attachment; filename="qrcode_{gallery.uuid}.png"'
     return resp
 
 
@@ -62,16 +56,29 @@ def gallery_view(request, uuid: str):
 
             files = request.FILES.getlist("files")  # <-- берём напрямую
             caption = form.cleaned_data.get("caption", "").strip()
+            start_order = form.cleaned_data.get("sort_order")
 
             if not files:
                 messages.error(request, "Не выбраны файлы.")
                 return redirect("gallery_view", uuid=str(gallery.uuid))
 
 
+            # лимит максимум 5 медиа в галерее
+            existing = gallery.media.count()
+            remaining = max(0, 5 - existing)
+            if remaining <= 0:
+                messages.error(request, "Достигнут лимит: максимум 5 медиа в этой галерее.")
+                return redirect("gallery_view", uuid=str(gallery.uuid))
+
+            # будем загружать не больше remaining
+            files = files[:remaining]
+
             created = 0
             errors = 0
             print(files)
-            for f in files:
+            # базовый порядок: если указан, используем его, иначе продолжаем от текущего
+            base_order = start_order if isinstance(start_order, int) else existing
+            for idx, f in enumerate(files):
                 # валидации
                 size_ok = (f.size or 0) <= max_bytes
                 mime = getattr(f, "content_type", "") or ""
@@ -90,13 +97,15 @@ def gallery_view(request, uuid: str):
                     gallery=gallery,
                     file=f,
                     caption=caption,
-                    uploaded_by=request.user if request.user.is_authenticated else None,
+                    sort_order=base_order + idx,
                     # kind/mime/file_size автоопределятся в save()
                 )
                 created += 1
 
             if created:
                 messages.success(request, f"Загружено файлов: {created}.")
+                if len(request.FILES.getlist("files")) > remaining:
+                    messages.warning(request, "Часть файлов не загружена: достигнут лимит 5 медиа.")
             if errors and not created:
                 messages.error(request, "Ни один файл не был загружен.")
             return redirect("gallery_view", uuid=str(gallery.uuid))
@@ -114,3 +123,21 @@ def gallery_view(request, uuid: str):
     }
     # рендерим шаблон по ключу (default/valentine/…)
     return render(request, f"galleries/{gallery.template_key}.html", context)
+
+
+def media_delete(request, uuid: str, item_id: int):
+    if request.method != "POST":
+        raise Http404()
+
+    gallery = get_object_or_404(Gallery, uuid=uuid)
+    item = get_object_or_404(MediaItem, id=item_id, gallery=gallery)
+
+    # удалить файл из стораджа и запись
+    try:
+        if item.file:
+            item.file.delete(save=False)
+    except Exception:
+        pass
+    item.delete()
+    messages.success(request, "Медиа удалено.")
+    return redirect("gallery_view", uuid=str(gallery.uuid))
