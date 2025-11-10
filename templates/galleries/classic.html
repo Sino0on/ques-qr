@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ gallery.title }}</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Nunito+Sans:wght@400;600;700&family=Marck+Script&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --deep:#1E3768; --orange:#F07401; --ivory:#FAFBE1; --sky:#B5CEED; --rose:#F7B7AA;
+      --ink:#0f1424; --paper:#ffffff;
+    }
+    html,body{height:100%;}
+    body{
+      margin:0;
+      font-family: Nunito, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      color:#273142;
+      background: var(--ivory);
+    }
+
+    /* Helpers */
+    .container{ max-width: 1160px; margin: 0 auto; padding: 0 20px; }
+    .section{ padding: 72px 0; position:relative; }
+    .rounded-xl{ border-radius: 18px; }
+    .shadow-soft{ box-shadow: 0 14px 36px rgba(30,55,104,.08); }
+    .pill{ border-radius: 999px; }
+
+    /* Wave separators */
+    .wave-bottom{ position:absolute; left:0; right:0; bottom:-1px; height:80px; background: none; }
+    .wave-top{ position:absolute; left:0; right:0; top:-1px; height:80px; background: none; transform: rotate(180deg); }
+    .wave svg{ width:100%; height:100%; display:block; }
+
+    /* Hero */
+    .hero{
+      background: linear-gradient(180deg, var(--deep), #0f203f);
+      color: #eef3ff;
+      padding-top: 96px;
+      padding-bottom: 96px;
+    }
+    .hero-inner{ display:flex; align-items:center; justify-content:space-between; gap:28px; }
+    .brand{ font-weight:800; letter-spacing:.6px; font-size: 44px; }
+    .brand .dot{ color: var(--orange); }
+    .subtitle{ opacity:.9; margin-top: 6px; }
+    .brandbook{ color:#c8d7ff; font-weight:700; letter-spacing: .3em; }
+    .hero-card{ background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14); }
+
+    /* About */
+    .about{ background: #fff; }
+    .about .lead{ color:#3a4863; max-width: 860px; }
+
+    /* Grid utilities */
+    .grid{ display:grid; gap:20px; }
+    @media (min-width: 700px){ .grid-2{ grid-template-columns: 1.2fr .8fr; } .grid-3{ grid-template-columns: repeat(3, 1fr);} }
+
+    /* Logo cards */
+    .card{ background:#fff; border:1px dashed rgba(30,55,104,.25); }
+    .logo-swatch{ display:flex; align-items:center; justify-content:center; height:140px; }
+    .logo-inv{ background: var(--deep); color:#fff; }
+    .logo-accent{ background: var(--orange); color:#fff; }
+
+    /* Construction */
+    .construct{ background: linear-gradient(180deg, #ffffff, #f7fbff); }
+    .logo-box{ position:relative; background:#fff; border:1px dashed rgba(39,49,66,.35); }
+    .logo-box:before, .logo-box:after{
+      content:""; position:absolute; width:10px; height:10px; border:1px solid rgba(39,49,66,.45); background:#fff; border-radius:2px;
+    }
+    .logo-box:before{ left:-6px; top:-6px; }
+    .logo-box:after{ right:-6px; bottom:-6px; }
+
+    /* Colors */
+    .palette{ display:grid; gap:16px; grid-template-columns: repeat(1, minmax(0, 1fr)); }
+    @media (min-width: 760px){ .palette{ grid-template-columns: repeat(3, 1fr); } }
+    .swatch{ border-radius:14px; overflow:hidden; border:1px solid rgba(39,49,66,.12); background:#fff; }
+    .swatch-top{ height:110px; }
+    .swatch-meta{ padding:12px 14px; font-size:14px; color:#3a4863; background:#fff; }
+
+    /* Fonts */
+    .script{ font-family: 'Marck Script', cursive; color: var(--orange); font-size: 24px; }
+    .geo{ font-family: Nunito Sans, Nunito, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; font-weight:700; }
+
+    /* Pattern */
+    .pattern-card{ background:#fff; border:1px solid rgba(39,49,66,.12); }
+    .pattern-tile{ height:140px; border-bottom:1px dashed rgba(39,49,66,.2); background: repeating-linear-gradient(45deg, rgba(240,116,1,.15), rgba(240,116,1,.15) 14px, rgba(30,55,104,.1) 14px, rgba(30,55,104,.1) 28px); }
+    .pattern-tile.alt{ background: radial-gradient(18px 18px at 14px 14px, rgba(30,55,104,.2), rgba(30,55,104,0) 60%), repeating-linear-gradient(60deg, rgba(181,206,237,.2), rgba(181,206,237,.2) 16px, rgba(247,183,170,.18) 16px, rgba(247,183,170,.18) 32px); }
+
+    /* Media gallery (up to 5) */
+    .media-grid{ display:grid; gap:20px; grid-template-columns: 1fr; }
+    @media (min-width: 760px){ .media-grid{ grid-template-columns: repeat(4, 1fr); } }
+    .cell-A{ grid-column: 1 / span 2; grid-row: 1 / span 2; }
+    .media-item{ position:relative; border-radius:18px; background:#fff; border:1px solid rgba(39,49,66,.12); box-shadow: 0 10px 30px rgba(30,55,104,.08); overflow:hidden; }
+    .media-frame{ position:relative; padding:16px; background: linear-gradient(180deg, #fff, #f7fbff); display:flex; align-items:center; justify-content:center; min-height: 300px; }
+    .media-item.cell-A .media-frame{ min-height: 380px; }
+    .media-frame img, .media-frame video{ max-width:100%; max-height:100%; border-radius:12px; object-fit:contain; }
+    .caption{ padding:12px 14px; color:#3a4863; }
+
+    /* Actions (delete) */
+    .actions{ position:absolute; top:10px; right:10px; display:flex; gap:8px; opacity:0; transform: translateY(-3px); transition: opacity .2s ease, transform .2s ease; }
+    .media-item:hover .actions{ opacity:1; transform: translateY(0); }
+    .btn-ghost{ padding:6px 10px; border-radius:999px; background: rgba(255,255,255,.7); border:1px solid rgba(30,55,104,.25); color:#1E3768; font-size:12px; }
+    .btn-ghost:hover{ background:#fff; }
+
+    /* FAB + Modal */
+    .fab{ position:fixed; right:20px; top:20px; z-index:40; width:56px; height:56px; border:none; border-radius:999px; display:flex; align-items:center; justify-content:center; background: linear-gradient(135deg, var(--deep), var(--orange)); color:#fff; box-shadow: 0 14px 30px rgba(30,55,104,.25); cursor:pointer; }
+    .fab:hover{ transform: translateY(-1px); }
+    .modal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background: rgba(15,20,36,.55); z-index:60; padding: 16px; }
+    .modal.open{ display:flex; }
+    .modal-card{ width:100%; max-width: 740px; border-radius: 16px; background:#fff; border:1px solid rgba(39,49,66,.12); box-shadow: 0 20px 50px rgba(30,55,104,.18); }
+
+    /* Headings */
+    h2{ margin:0 0 14px; font-size:28px; letter-spacing:.3px; color: var(--deep); }
+    .sub{ color:#53627f; }
+  </style>
+</head>
+<body>
+
+  <!-- FAB -->
+  <button id="fabUpload" aria-label="Добавить" class="fab">
+    <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/></svg>
+  </button>
+
+  <!-- HERO -->
+  <section class="hero section">
+    <div class="container hero-inner">
+      <div>
+        <div class="brand">Ques<span class="dot">Lavka</span></div>
+        <div class="script">Лавка подарков и аксессуаров Ques</div>
+      </div>
+      <!-- <div class="brandbook">BRANDBOOK</div> -->
+    </div>
+    <div class="wave wave-bottom">
+      <svg viewBox="0 0 1440 80" preserveAspectRatio="none"><path fill="#ffffff" d="M0,32 C240,96 480,-16 720,16 C960,48 1200,96 1440,32 L1440,80 L0,80 Z"/></svg>
+    </div>
+  </section>
+
+
+
+  <!-- MEDIA (from gallery) -->
+  <section class="section" style="background:linear-gradient(180deg, #FAFBE1, #fff);">
+    <div class="container">
+      <h2 class="geo">Галерея</h2>
+      {% if messages %}
+        <div style="margin:10px 0;">
+          {% for m in messages %}<div class="sub">{{ m }}</div>{% endfor %}
+        </div>
+      {% endif %}
+
+      {% if media_items %}
+        {% if media_items|length == 5 %}
+          <div class="media-grid">
+            {% for item in media_items %}
+              <article class="media-item {% if forloop.counter == 1 %}cell-A{% endif %}">
+                <div class="actions">
+                  <form method="post" action="{% url 'media_delete' uuid=gallery.uuid item_id=item.id %}" onsubmit="return confirm('Удалить этот медиафайл?');">
+                    {% csrf_token %}<button class="btn-ghost" type="submit">Удалить</button>
+                  </form>
+                </div>
+                <div class="media-frame">
+                  {% if item.kind == "image" %}
+                    <img src="{{ item.file.url }}" alt="{{ item.caption }}" loading="lazy">
+                  {% elif item.kind == "video" %}
+                    <video controls preload="metadata"><source src="{{ item.file.url }}#t=0.1" type="{{ item.mime_type }}"></video>
+                  {% endif %}
+                </div>
+                {% if item.caption %}<div class="caption">{{ item.caption }}</div>{% endif %}
+              </article>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="media-grid" style="grid-template-columns: repeat(3, 1fr);">
+            {% for item in media_items %}
+              <article class="media-item">
+                <div class="actions">
+                  <form method="post" action="{% url 'media_delete' uuid=gallery.uuid item_id=item.id %}" onsubmit="return confirm('Удалить этот медиафайл?');">
+                    {% csrf_token %}<button class="btn-ghost" type="submit">Удалить</button>
+                  </form>
+                </div>
+                <div class="media-frame">
+                  {% if item.kind == "image" %}
+                    <img src="{{ item.file.url }}" alt="{{ item.caption }}" loading="lazy">
+                  {% elif item.kind == "video" %}
+                    <video controls preload="metadata"><source src="{{ item.file.url }}#t=0.1" type="{{ item.mime_type }}"></video>
+                  {% endif %}
+                </div>
+                {% if item.caption %}<div class="caption">{{ item.caption }}</div>{% endif %}
+              </article>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% else %}
+        <div class="sub">Здесь пока пусто. Добавьте первые вдохновляющие кадры.</div>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Upload Modal -->
+  <div id="uploadModal" class="modal">
+    <div class="modal-card">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid rgba(39,49,66,.1);">
+        <div class="geo" style="font-size:18px; color:var(--deep);">Загрузить медиа</div>
+        <button id="closeUpload" class="pill" style="padding:8px 12px; background:var(--deep); color:#fff; border:none;">Закрыть</button>
+      </div>
+      <form method="post" enctype="multipart/form-data" style="padding:18px;">
+        {% csrf_token %}
+        <div style="display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap;">
+          <input type="file" name="files" accept="image/*,video/*" multiple required />
+          <input type="text" name="caption" placeholder="Подпись (опционально)" maxlength="200" />
+          <input type="number" name="sort_order" placeholder="Порядок (начиная с)" min="0" />
+          {% if need_pin %}<input type="text" name="pin" placeholder="PIN для загрузки" maxlength="12" required />{% endif %}
+          <button type="submit" class="pill" style="padding:10px 18px; background:var(--orange); color:#fff; border:none;">Загрузить</button>
+        </div>
+        <div class="sub" style="margin-top:6px;">До {{ max_mb }} МБ на файл. Фото и видео.</div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // FAB modal controls
+    const fab = document.getElementById('fabUpload');
+    const modal = document.getElementById('uploadModal');
+    const closeBtn = document.getElementById('closeUpload');
+    fab.addEventListener('click', ()=> modal.classList.add('open'));
+    closeBtn.addEventListener('click', ()=> modal.classList.remove('open'));
+    modal.addEventListener('click', (e)=>{ if(e.target === modal){ modal.classList.remove('open'); }});
+  </script>
+</body>
+</html>
+
+
