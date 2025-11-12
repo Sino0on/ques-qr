@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+{% load static %}
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
@@ -80,6 +81,18 @@
     .modal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background: rgba(9,12,16,.75); z-index:60; padding: 16px; }
     .modal.open{ display:flex; }
     .modal-card{ width:100%; max-width: 720px; border-radius: 16px; }
+
+    /* Decorative scattered New Year images */
+    .ny-decor{ position:fixed; inset:0; pointer-events:none; z-index:5; }
+    .ny-decor img{ position:absolute; width:auto; height:140px; opacity:.9;
+      filter: drop-shadow(0 10px 22px rgba(110,193,255,.28)); will-change: transform;
+    }
+    @media (min-width: 640px){ .ny-decor img{ height:160px; } }
+    @media (min-width: 1024px){ .ny-decor img{ height:180px; } }
+    @keyframes floatY{
+      from{ transform: translateY(-6px) rotate(var(--rot, 0deg)); }
+      to{   transform: translateY(6px)  rotate(var(--rot, 0deg)); }
+    }
   </style>
 </head>
 <body>
@@ -98,6 +111,16 @@
   <div class="snow-bg" id="snow"></div>
 
   <div class="relative z-10 min-h-screen">
+    <!-- Decorative scattered images layer -->
+    <div class="ny-decor" id="nyDecor">
+      <img src="{% static 'admin/my_imgs/christmas-tree.png' %}" alt="Рождественская ёлка" style="--rot:-6deg;">
+      <img src="{% static 'admin/my_imgs/gift.svg' %}" alt="Подарок" style="--rot:8deg;">
+      <img src="{% static 'admin/my_imgs/santa-clause.png' %}" alt="Санта-Клаус" style="--rot:-3deg;">
+      <!-- Duplicated images -->
+      <img src="{% static 'admin/my_imgs/christmas-tree.png' %}" alt="Рождественская ёлка" style="--rot:-6deg;">
+      <img src="{% static 'admin/my_imgs/gift.svg' %}" alt="Подарок" style="--rot:8deg;">
+      <img src="{% static 'admin/my_imgs/santa-clause.png' %}" alt="Санта-Клаус" style="--rot:-3deg;">
+    </div>
     <!-- FAB -->
     <button id="fabUpload" aria-label="Добавить" class="fab">
       <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -234,6 +257,48 @@
       s.style.transform = `scale(${scale})`;
       snow.appendChild(s);
     }
+
+    // Place decorative images on sides
+    const decor = document.getElementById('nyDecor');
+    const imgs = decor.querySelectorAll('img');
+    function placeDecor(){
+      const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+      const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+      const marginX = 30;
+      const marginY = 30;
+      
+      // Fixed positions for 6 images: 3 on left, 3 on right
+      const positions = [
+        { side: 'left', xPercent: 0.02, yPercent: 0.20 },  // Left top
+        { side: 'right', xPercent: 0.98, yPercent: 0.25 }, // Right top
+        { side: 'left', xPercent: 0.03, yPercent: 0.50 },  // Left middle
+        { side: 'right', xPercent: 0.97, yPercent: 0.55 }, // Right middle
+        { side: 'left', xPercent: 0.02, yPercent: 0.80 },  // Left bottom
+        { side: 'right', xPercent: 0.98, yPercent: 0.75 }, // Right bottom
+      ];
+      
+      imgs.forEach((img, idx) => {
+        const pos = positions[idx % positions.length];
+        const imgWidth = 180; // Approximate image width
+        
+        let left;
+        if (pos.side === 'left') {
+          // Left side: fixed position from left edge (xPercent is distance from left)
+          left = Math.round(pos.xPercent * vw);
+        } else {
+          // Right side: xPercent is distance from right, so calculate left position
+          left = Math.round(vw * pos.xPercent - imgWidth);
+        }
+        
+        const top = Math.round(pos.yPercent * vh);
+        
+        img.style.left = Math.max(left, marginX) + 'px';
+        img.style.top  = Math.max(top, marginY) + 'px';
+        img.style.animation = `floatY ${8 + (idx % 3) * 2}s ease-in-out infinite alternate`;
+      });
+    }
+    window.addEventListener('load', placeDecor);
+    window.addEventListener('resize', placeDecor);
 
     // Upload modal controls
     const fab = document.getElementById('fabUpload');

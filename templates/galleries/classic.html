@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+{% load static %}
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
@@ -111,9 +112,36 @@
     /* Headings */
     h2{ margin:0 0 14px; font-size:28px; letter-spacing:.3px; color: var(--deep); }
     .sub{ color:#53627f; }
+
+    /* Decorative classic images */
+    .classic-decor{ position:fixed; inset:0; pointer-events:none; z-index:5; }
+    .classic-decor img{ position:absolute; width:auto; height:90px; opacity:.85;
+      filter: drop-shadow(0 8px 20px rgba(30,55,104,.2)); will-change: transform;
+    }
+    @media (min-width: 640px){ .classic-decor img{ height:100px; } }
+    @media (min-width: 1024px){ .classic-decor img{ height:110px; } }
+    @keyframes floatY{
+      from{ transform: translateY(-6px) rotate(var(--rot, 0deg)); }
+      to{   transform: translateY(6px)  rotate(var(--rot, 0deg)); }
+    }
   </style>
 </head>
 <body>
+
+  <!-- Decorative classic images layer -->
+  <div class="classic-decor" id="classicDecor">
+    <img src="{% static 'admin/classic/Снимок экрана 2025-11-12 в 23.18.24.png' %}" alt="Classic decor" style="--rot:-6deg;">
+    <img src="{% static 'admin/classic/Снимок экрана 2025-11-12 в 23.18.31.png' %}" alt="Classic decor" style="--rot:8deg;">
+    <img src="{% static 'admin/classic/Снимок экрана 2025-11-12 в 23.18.41.png' %}" alt="Classic decor" style="--rot:-3deg;">
+    <img src="{% static 'admin/classic/Снимок экрана 2025-11-12 в 23.18.46.png' %}" alt="Classic decor" style="--rot:5deg;">
+    <img src="{% static 'admin/classic/Снимок экрана 2025-11-12 в 23.18.48.png' %}" alt="Classic decor" style="--rot:-4deg;">
+    <img src="{% static 'admin/classic/Снимок экрана 2025-11-12 в 23.18.53.png' %}" alt="Classic decor" style="--rot:7deg;">
+    <img src="{% static 'admin/classic/Снимок экрана 2025-11-12 в 23.18.57.png' %}" alt="Classic decor" style="--rot:-5deg;">
+    <img src="{% static 'admin/classic/Снимок экрана 2025-11-12 в 23.19.02.png' %}" alt="Classic decor" style="--rot:6deg;">
+    <img src="{% static 'admin/classic/Снимок экрана 2025-11-12 в 23.19.06.png' %}" alt="Classic decor" style="--rot:-7deg;">
+    <img src="{% static 'admin/classic/Снимок экрана 2025-11-12 в 23.19.13.png' %}" alt="Classic decor" style="--rot:4deg;">
+    <img src="{% static 'admin/classic/Снимок экрана 2025-11-12 в 23.19.18.png' %}" alt="Classic decor" style="--rot:-8deg;">
+  </div>
 
   <!-- FAB -->
   <button id="fabUpload" aria-label="Добавить" class="fab">
@@ -223,6 +251,54 @@
     fab.addEventListener('click', ()=> modal.classList.add('open'));
     closeBtn.addEventListener('click', ()=> modal.classList.remove('open'));
     modal.addEventListener('click', (e)=>{ if(e.target === modal){ modal.classList.remove('open'); }});
+
+    // Place decorative images on sides
+    const decor = document.getElementById('classicDecor');
+    const imgs = decor.querySelectorAll('img');
+    function placeDecor(){
+      const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+      const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+      const marginX = 20;
+      const marginY = 20;
+      const imgWidth = 110; // Approximate image width for smaller images
+      
+      // Distribute 11 images: 6 on left, 5 on right, spread vertically
+      const leftCount = Math.ceil(imgs.length / 2); // 6 images on left
+      const rightCount = Math.floor(imgs.length / 2); // 5 images on right
+      
+      imgs.forEach((img, idx) => {
+        const isLeft = idx < leftCount;
+        let yPercent;
+        
+        if (isLeft) {
+          // Left side: distribute images evenly
+          const step = leftCount > 1 ? 0.75 / (leftCount - 1) : 0; // Space from 0.1 to 0.85
+          yPercent = 0.1 + (idx * step);
+        } else {
+          // Right side: distribute images evenly
+          const rightIdx = idx - leftCount;
+          const step = rightCount > 1 ? 0.75 / (rightCount - 1) : 0; // Space from 0.1 to 0.85
+          yPercent = 0.1 + (rightIdx * step);
+        }
+        
+        let left;
+        if (isLeft) {
+          // Left side: fixed position from left edge
+          left = Math.round(0.02 * vw);
+        } else {
+          // Right side: calculate from right edge
+          left = Math.round(vw * 0.98 - imgWidth);
+        }
+        
+        const top = Math.round(yPercent * vh);
+        
+        img.style.left = Math.max(left, marginX) + 'px';
+        img.style.top  = Math.max(top, marginY) + 'px';
+        img.style.animation = `floatY ${8 + (idx % 3) * 2}s ease-in-out infinite alternate`;
+      });
+    }
+    window.addEventListener('load', placeDecor);
+    window.addEventListener('resize', placeDecor);
   </script>
 </body>
 </html>
