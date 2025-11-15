@@ -84,7 +84,7 @@
 
     /* Decorative scattered New Year images */
     .ny-decor{ position:fixed; inset:0; pointer-events:none; z-index:5; }
-    .ny-decor img{ position:absolute; width:auto; height:140px; opacity:.9;
+    .ny-decor img{ position:absolute; width:auto; height:80px; opacity:.9;
       filter: drop-shadow(0 10px 22px rgba(110,193,255,.28)); will-change: transform;
     }
     @media (min-width: 640px){ .ny-decor img{ height:160px; } }
@@ -264,22 +264,23 @@
     function placeDecor(){
       const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
       const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
-      const marginX = 30;
-      const marginY = 30;
+      const isMobile = vw < 640;
+      const marginX = isMobile ? 5 : 30;
+      const marginY = isMobile ? 20 : 30;
       
       // Fixed positions for 6 images: 3 on left, 3 on right
       const positions = [
-        { side: 'left', xPercent: 0.02, yPercent: 0.20 },  // Left top
-        { side: 'right', xPercent: 0.98, yPercent: 0.25 }, // Right top
-        { side: 'left', xPercent: 0.03, yPercent: 0.50 },  // Left middle
-        { side: 'right', xPercent: 0.97, yPercent: 0.55 }, // Right middle
-        { side: 'left', xPercent: 0.02, yPercent: 0.80 },  // Left bottom
-        { side: 'right', xPercent: 0.98, yPercent: 0.75 }, // Right bottom
+        { side: 'left', xPercent: isMobile ? 0.01 : 0.02, yPercent: 0.20 },  // Left top
+        { side: 'right', xPercent: isMobile ? 0.99 : 0.98, yPercent: 0.25 }, // Right top
+        { side: 'left', xPercent: isMobile ? 0.01 : 0.03, yPercent: 0.50 },  // Left middle
+        { side: 'right', xPercent: isMobile ? 0.99 : 0.97, yPercent: 0.55 }, // Right middle
+        { side: 'left', xPercent: isMobile ? 0.01 : 0.02, yPercent: 0.80 },  // Left bottom
+        { side: 'right', xPercent: isMobile ? 0.99 : 0.98, yPercent: 0.75 }, // Right bottom
       ];
       
       imgs.forEach((img, idx) => {
         const pos = positions[idx % positions.length];
-        const imgWidth = 180; // Approximate image width
+        const imgWidth = isMobile ? 80 : 180; // Smaller on mobile
         
         let left;
         if (pos.side === 'left') {
