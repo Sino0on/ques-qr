@@ -2,7 +2,7 @@ version: "3.10"
 
 services:
   pg:
-    image: postgres:latest
+    image: postgres:17
     restart: always
     env_file:
       - .env
