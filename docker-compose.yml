@@ -2,7 +2,8 @@ version: "3.10"
 
 services:
   pg:
-    image: postgres:17
+    image: postgres:latest
+    container_name: qr-db
     restart: always
     env_file:
       - .env
@@ -12,6 +13,7 @@ services:
 
   app:
     build: .
+    container_name: qr
     volumes:
       - .:/core
       - ./media:/app/media
