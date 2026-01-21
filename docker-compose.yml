@@ -1,7 +1,7 @@
 version: "3.10"
 
 services:
-  postgres:
+  pg:
     image: postgres:latest
     restart: always
     env_file:
@@ -22,5 +22,5 @@ services:
     env_file:
       - .env
     depends_on:
-      - postgres
+      - pg
     restart: always
